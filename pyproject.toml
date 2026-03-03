@@ -1,0 +1,51 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agent-sdk"
+version = "0.1.0"
+description = "A Python Agent SDK with durability, isolation, governance, persistence, scale, and composability."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [{ name = "alikasif" }]
+
+dependencies = [
+    "pydantic>=2.5,<3",
+    "pydantic-settings>=2.1,<3",
+    "aiosqlite>=0.19,<1",
+    "msgpack>=1.0,<2",
+    "litellm>=1.0",
+]
+
+[project.optional-dependencies]
+server = [
+    "fastapi>=0.109,<1",
+    "uvicorn[standard]>=0.27,<1",
+    "httpx>=0.26,<1",
+]
+all = ["agent-sdk[server]"]
+dev = [
+    "agent-sdk[all]",
+    "pytest>=8.0,<9",
+    "pytest-asyncio>=0.23,<1",
+    "pytest-cov>=4.1,<6",
+    "ruff>=0.2,<1",
+    "mypy>=1.8,<2",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true

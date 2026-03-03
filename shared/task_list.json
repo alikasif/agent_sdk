@@ -1,0 +1,226 @@
+[
+  {
+    "id": 1,
+    "title": "Initialize Git & Push Scaffold",
+    "assigned_to": "github",
+    "status": "not_started",
+    "blocked_by": [],
+    "description": "Create branch 'feature/agent-sdk-core' from main. After project_structure creates the scaffold, commit and push with message 'chore: initialize agent-sdk project scaffold'."
+  },
+  {
+    "id": 2,
+    "title": "Create project directory structure and configs",
+    "assigned_to": "project_structure",
+    "status": "done",
+    "blocked_by": [],
+    "description": "Create the full package directory tree (agent_sdk/ with core/, durability/, isolation/, governance/, persistence/, scale/, composability/, db/, db/repositories/), tests/ (unit/, integration/, e2e/), examples/, docs/. Create all __init__.py files as empty placeholders. Create _version.py with __version__ = '0.1.0'."
+  },
+  {
+    "id": 3,
+    "title": "Create pyproject.toml and dev configs",
+    "assigned_to": "devops",
+    "status": "done",
+    "blocked_by": [2],
+    "description": "Create pyproject.toml with: build-system (hatchling), project metadata (name='agent-sdk', version='0.1.0', python>=3.11), dependencies (pydantic>=2.5, pydantic-settings>=2.1, aiosqlite>=0.19, msgpack>=1.0, litellm>=1.0), optional-dependencies server (fastapi>=0.109, uvicorn[standard]>=0.27, httpx>=0.26), dev (pytest>=8.0, pytest-asyncio>=0.23, pytest-cov>=4.1, ruff>=0.2, mypy>=1.8). Create ruff.toml (target py311, line-length 120). Create .gitignore for Python. Create Dockerfile (python:3.11-slim, install deps, copy source, expose 8000, CMD uvicorn). Create docker-compose.yml (sdk service with build context, port 8000, SQLite volume mount)."
+  },
+  {
+    "id": 4,
+    "title": "Implement types.py and exceptions.py",
+    "assigned_to": "python_coder",
+    "status": "done",
+    "blocked_by": [2],
+    "description": "Implement agent_sdk/types.py with all enums: StepStatus (pending, running, completed, failed, skipped), SessionStatus (active, paused, completed, archived), RunStatus (completed, paused, failed), MessageRole (user, assistant, system, tool), ExecutionPolicy (auto, human_approval, admin_signoff), ApprovalStatus (pending, approved, denied, expired), MemoryType (short_term, long_term), CircuitState (closed, open, half_open). All as str Enums. Implement agent_sdk/exceptions.py with the full exception hierarchy from ARCHITECTURE.md Appendix B: AgentSDKError (base), ConfigurationError, SessionNotFoundError, SessionPausedError, StepExecutionError, ToolNotFoundError, ToolExecutionError, IsolationViolationError, ApprovalRequiredError, ApprovalTimeoutError, ApprovalDeniedError, CheckpointError, ReplayError, RateLimitError, CircuitOpenError, BackpressureError, LLMError, DiscoveryError."
+  },
+  {
+    "id": 5,
+    "title": "Implement config.py and logging.py",
+    "assigned_to": "python_coder",
+    "status": "done",
+    "blocked_by": [4],
+    "description": "Implement agent_sdk/config.py with Settings class using pydantic-settings BaseSettings: db_path (str, default 'agent_sdk.db'), db_pool_size (int, default 5), max_steps (int, default 30), default_model (str, default 'gpt-4'), default_temperature (float, default 0.7), max_tokens (int, default 4096), approval_timeout (float, default 300.0), queue_max_size (int, default 1000), queue_max_workers (int, default 10), log_level (str, default 'INFO'), server_host (str, default '0.0.0.0'), server_port (int, default 8000). Use env_prefix='AGENT_SDK_'. Implement agent_sdk/logging.py with setup_logging(level) function that configures stdlib logging with structured JSON-like formatting, returns a logger."
+  },
+  {
+    "id": 6,
+    "title": "Implement core/message.py models",
+    "assigned_to": "python_coder",
+    "status": "done",
+    "blocked_by": [4],
+    "description": "Implement agent_sdk/core/message.py with Pydantic models: Message (role: MessageRole, content: str|None, tool_calls: list[ToolCall]|None, tool_call_id: str|None, name: str|None, timestamp: datetime, metadata: dict), ToolCall (id: str, tool_name: str, arguments: dict), ToolResult (tool_call_id: str, output: Any, error: str|None, idempotency_key: str), LLMResponse (message: Message, tool_calls: list[ToolCall], usage: TokenUsage), TokenUsage (prompt_tokens: int, completion_tokens: int, total_tokens: int), StreamEvent (event: str, data: dict). All with proper defaults and validators."
+  },
+  {
+    "id": 7,
+    "title": "Implement SQLite database layer",
+    "assigned_to": "database",
+    "status": "done",
+    "blocked_by": [5],
+    "description": "Implement agent_sdk/db/connection.py: DatabaseConnection class with __init__(db_path, pool_size), async initialize() (create pool, enable WAL mode, run migrations), execute(), fetch_one(), fetch_all(), execute_many(), transaction() context manager, close(). Use aiosqlite with a queue-based connection pool. Implement agent_sdk/db/migrations.py: MigrationRunner class that creates schema_version table, defines all 9 migrations (sessions, messages, steps, idempotency_keys, memory, knowledge, approvals, audit_log, agent_registry) with exact SQL from ARCHITECTURE.md §5 including all indexes. Implement agent_sdk/db/models.py: helper functions to convert between SQLite rows (dicts) and Pydantic models (row_to_model, model_to_row). Use ARCHITECTURE.md §5 for exact table schemas."
+  },
+  {
+    "id": 8,
+    "title": "Implement isolation layer",
+    "assigned_to": "python_coder",
+    "status": "done",
+    "blocked_by": [4],
+    "description": "Implement agent_sdk/isolation/scope.py: ContextVar _current_user_id, functions set_user_scope(user_id) -> Token, get_user_scope() -> str (raises IsolationViolationError if not set), clear_user_scope(token), async context manager user_scope(user_id). Implement agent_sdk/isolation/filter.py: ScopedQueryBuilder class that reads user_id from get_user_scope() and auto-injects it into all SQL operations — select(), insert(), update(), delete() methods that return (sql_string, params_list) tuples. Implement agent_sdk/isolation/validator.py: IsolationValidator with static methods assert_owns(record, expected_user_id) and assert_all_owned(records, expected_user_id) that raise IsolationViolationError on mismatch."
+  },
+  {
+    "id": 9,
+    "title": "Implement all repository classes",
+    "assigned_to": "python_coder",
+    "status": "done",
+    "blocked_by": [7, 8],
+    "description": "Implement all 7 repositories in agent_sdk/db/repositories/. Each takes DatabaseConnection and uses ScopedQueryBuilder for user isolation. (1) session_repo.py: SessionRepository with create, get_by_id, list_by_user, update_status, delete. (2) step_repo.py: StepRepository with create, get_by_id, get_by_session, get_latest_by_session, update_status, save_checkpoint, list_checkpoints. (3) memory_repo.py: MemoryRepository with create, get_by_user, get_by_session, search, delete. (4) knowledge_repo.py: KnowledgeRepository with put, get, search, delete, list_namespaces. (5) approval_repo.py: ApprovalRepository with create, get_by_id, get_pending, resolve, get_by_session. (6) audit_repo.py: AuditRepository with create, query (with user_id, action, since, limit filters). (7) agent_registry_repo.py: AgentRegistryRepository with register, deregister, get_by_name, list_all, update_last_seen. Also create db/repositories/__init__.py re-exporting all repos."
+  },
+  {
+    "id": 10,
+    "title": "Implement core tool system with @tool decorator",
+    "assigned_to": "python_coder",
+    "status": "done",
+    "blocked_by": [6, 8],
+    "description": "Implement agent_sdk/core/tool.py: (1) Tool Pydantic model with name, description, parameters_schema (dict — JSON Schema), policy (ExecutionPolicy, default AUTO), fn (callable). Method execute(ctx, **kwargs) -> ToolResult that runs fn with context. (2) ToolRegistry class with register(tool), get(name), list_tools(), to_schemas() (exports as OpenAI-style function schemas). (3) @tool decorator: def tool(*, name=None, description=None, policy=ExecutionPolicy.AUTO) that inspects the decorated async function's signature and type hints, auto-generates JSON Schema via Pydantic's model_json_schema or manual inspection of annotations, creates a Tool instance. Support Pydantic BaseModel as parameter types for complex inputs. The decorator must handle both @tool and @tool() syntax."
+  },
+  {
+    "id": 11,
+    "title": "Implement LLM adapter with litellm",
+    "assigned_to": "python_coder",
+    "status": "done",
+    "blocked_by": [6],
+    "description": "Implement agent_sdk/core/llm.py: (1) LLMAdapter ABC with abstract methods chat(messages, tools, temperature, max_tokens) -> LLMResponse and chat_stream(messages, tools, temperature, max_tokens) -> AsyncIterator[StreamEvent]. (2) LiteLLMAdapter(LLMAdapter) concrete class that wraps litellm.acompletion() and litellm.acompletion() with stream=True. Constructor takes model (str), api_key (str|None), and **kwargs for litellm config. Convert between SDK Message/ToolCall models and litellm's OpenAI-compatible format. Handle litellm exceptions and wrap in LLMError. Extract TokenUsage from litellm response."
+  },
+  {
+    "id": 12,
+    "title": "Implement core runtime (Step, Context, Session, Agent)",
+    "assigned_to": "python_coder",
+    "status": "done",
+    "blocked_by": [9, 10, 11],
+    "description": "Implement the core runtime classes: (1) agent_sdk/core/step.py: Step Pydantic model per ARCHITECTURE.md §4.1. (2) agent_sdk/core/context.py: RunContext class holding user_id, session, agent reference, db connection, settings. Method get_scoped_repo() that returns a repository filtered to user_id. (3) agent_sdk/core/session.py: Session class with id, user_id, agent_name, status, metadata, timestamps. Methods: add_message(), get_history(), get_steps(), pause(), resume(), archive(). Backed by SessionRepository. (4) agent_sdk/core/agent.py: Agent class with __init__(name, instructions, tools, model, settings, policies). Methods: run(user_id, input, session_id, max_steps, resume) -> AgentResult, stream() -> AsyncIterator[StreamEvent], initialize(), shutdown(). The run() method implements the step loop: set user_scope → create/load session → loop (build messages → call LLM → if tool_calls: execute tools → checkpoint step → repeat; else: return final output). Initially wire WITHOUT durability/governance hooks — those are added in Phase 5 tasks."
+  },
+  {
+    "id": 13,
+    "title": "Implement durability: checkpoint, replay, idempotency, recovery",
+    "assigned_to": "python_coder",
+    "status": "done",
+    "blocked_by": [12],
+    "description": "Implement all durability modules: (1) durability/checkpoint.py: CheckpointManager with save(step) — serialize step state via msgpack and persist to DB, load(session_id, step_number), load_latest(session_id), list_checkpoints(session_id). (2) durability/idempotency.py: IdempotencyTracker with record(key, result), check(key) -> ToolResult|None, clear(session_id). Uses idempotency_keys table. (3) durability/replay.py: ReplayEngine with replay_to(session_id, step_number) — loads completed steps from checkpoints without re-executing, resume_from(session_id) -> ResumePoint. (4) durability/recovery.py: RecoveryManager with detect_incomplete() -> list[session_id] (finds sessions with running steps), auto_resume(session_id, agent) -> AgentResult. Then WIRE into core/agent.py: in the step loop, save checkpoint after each completed step; on resume=True, use ReplayEngine to rebuild state and continue from last checkpoint; before executing tool calls, check idempotency keys."
+  },
+  {
+    "id": 14,
+    "title": "Implement governance: policy, rules, approval, audit",
+    "assigned_to": "python_coder",
+    "status": "done",
+    "blocked_by": [12],
+    "description": "Implement all governance modules: (1) governance/policy.py: PolicyRule model (tool_name: str|None, policy: ExecutionPolicy, condition: str|None, description: str). (2) governance/rules.py: RuleEngine class with __init__(rules: list[PolicyRule]), evaluate(tool, ctx) -> ExecutionPolicy that matches rules by tool_name (None = wildcard) and returns highest authority level. (3) governance/approval.py: ApprovalRequest model (id, session_id, user_id, step_number, tool_call, required_policy, status, timestamps, resolved_by, reason). ApprovalManager with request_approval(ctx, tool_call, policy) -> ApprovalRequest (creates pending in DB), resolve(request_id, decision, resolved_by, reason), get_pending(user_id), wait_for_resolution(request_id, timeout) that polls DB. (4) governance/audit.py: AuditEntry model and AuditLogger with log(ctx, action, details) and query(filters). Then WIRE into core/agent.py: before executing each tool call, evaluate with RuleEngine; if not AUTO, create approval request, pause session, save checkpoint, return paused result; log all tool executions to audit."
+  },
+  {
+    "id": 15,
+    "title": "Implement persistence: session_store, memory, knowledge, history",
+    "assigned_to": "python_coder",
+    "status": "done",
+    "blocked_by": [12],
+    "description": "Implement all persistence modules: (1) persistence/session_store.py: SessionStore with create(user_id, agent_name, metadata) -> Session, load(session_id), list_sessions(user_id, status, limit), update_status(session_id, status), archive(session_id), delete(session_id). Uses SessionRepository. (2) persistence/memory.py: MemoryManager with add_short_term(ctx, key, value), get_short_term(ctx, limit), add_long_term(ctx, key, value, tags), search_long_term(ctx, query, limit), summarize_and_promote(ctx) — summarizes short-term into long-term, clear(ctx). MemoryEntry model. (3) persistence/knowledge.py: KnowledgeStore with put(user_id, namespace, key, content, metadata), get(), search() (text matching), delete(), list_namespaces(). KnowledgeEntry model. (4) persistence/history.py: HistoryManager with append(session_id, message), get(session_id, limit, before), get_full(session_id), count(session_id), truncate(session_id, keep_last)."
+  },
+  {
+    "id": 16,
+    "title": "Implement scale: retry, circuit breaker, pool, queue",
+    "assigned_to": "python_coder",
+    "status": "done",
+    "blocked_by": [12],
+    "description": "Implement all scale modules: (1) scale/retry.py: RetryPolicy model (max_retries, base_delay, max_delay, exponential_base, jitter, retryable_exceptions). with_retry() async function and @retry decorator with exponential backoff + jitter. (2) scale/circuit_breaker.py: CircuitBreaker class with state property (CircuitState), call(fn, *args, **kwargs) that executes through breaker, record_success(), record_failure(), reset(). Config: failure_threshold, recovery_timeout, half_open_max. (3) scale/pool.py: ConcurrencyPool with acquire() context manager (semaphore-based), run(fn), gather(tasks). (4) scale/queue.py: RequestQueue with submit(request, priority) -> request_id, get_result(request_id, timeout), cancel(request_id), start(), stop(). Uses asyncio.PriorityQueue internally. Queue entries are persisted to SQLite for durability — on startup, recover pending items. (5) scale/rate_limiter.py: Thin wrapper that configures litellm's built-in rate limiting (set litellm.rpm_limit, litellm.tpm_limit per model). Provide configure_rate_limits(model, rpm, tpm) function."
+  },
+  {
+    "id": 17,
+    "title": "Implement composability: protocol, server, client, discovery, MCP",
+    "assigned_to": "python_coder",
+    "status": "done",
+    "blocked_by": [13, 14, 15, 16],
+    "description": "Implement all composability modules: (1) composability/protocol.py: AgentRequest (user_id, input, session_id, max_steps, metadata) and AgentResponse (session_id, user_id, output, messages, status, usage) Pydantic models. (2) composability/server.py: create_agent_app(agent, prefix='/agent', enable_discovery, cors_origins) -> FastAPI that mounts endpoints: POST /run, POST /stream (SSE), GET /sessions/{id}, GET /sessions, POST /sessions/{id}/resume, GET /approvals, POST /approvals/{id}, GET /health, GET /schema. Wire to Agent.run() and Agent.stream(). Add CORS middleware. (3) composability/client.py: AgentClient async HTTP client using httpx — run(), stream(), get_session(), list_sessions(), resume(), resolve_approval(), health(). Supports async context manager. (4) composability/discovery.py: AgentDescriptor model, ServiceRegistry with register(), deregister(), discover(), list_agents(), health_check_all(). Backed by agent_registry table. (5) composability/mcp.py: MCPAdapter with to_mcp_tools(), handle_mcp_call(), call_mcp_tool()."
+  },
+  {
+    "id": 18,
+    "title": "Wire public __init__.py and integration",
+    "assigned_to": "python_coder",
+    "status": "done",
+    "blocked_by": [17],
+    "description": "Complete agent_sdk/__init__.py with clean public API re-exports: Agent, Session, RunContext, Tool, tool (decorator), Message, ToolCall, ToolResult, AgentResult, StreamEvent, Settings, create_agent_app, AgentClient, ServiceRegistry, SessionStore, MemoryManager, KnowledgeStore, ExecutionPolicy, PolicyRule. Also export types and exceptions. Update all sub-package __init__.py files to re-export their public classes. Ensure the SDK can be used with: 'from agent_sdk import Agent, tool, create_agent_app'. Verify imports work cleanly."
+  },
+  {
+    "id": 19,
+    "title": "Write unit tests for all modules",
+    "assigned_to": "python_test",
+    "status": "done",
+    "blocked_by": [18],
+    "description": "Write comprehensive unit tests in tests/unit/: (1) test_types.py — enum values. (2) test_exceptions.py — exception hierarchy. (3) test_config.py — settings defaults and env override. (4) test_message.py — message model serialization. (5) test_tool.py — @tool decorator, schema generation, ToolRegistry. (6) test_isolation.py — scope set/get/clear, ScopedQueryBuilder SQL injection, validator assertions. (7) test_checkpoint.py — save/load/latest checkpoint. (8) test_idempotency.py — record/check/clear. (9) test_governance.py — RuleEngine evaluation, ApprovalManager lifecycle, AuditLogger. (10) test_memory.py — short-term/long-term CRUD. (11) test_knowledge.py — put/get/search/delete. (12) test_circuit_breaker.py — state transitions (closed→open→half-open→closed). (13) test_retry.py — retry with backoff, max retries. (14) test_queue.py — submit/get_result/cancel, priority ordering. (15) test_pool.py — concurrency limiting. Use pytest-asyncio, in-memory SQLite (':memory:'), mock litellm calls. Create tests/conftest.py with shared fixtures (db connection, sample user_id, mock LLM)."
+  },
+  {
+    "id": 20,
+    "title": "Write integration tests for full agent lifecycle",
+    "assigned_to": "python_test",
+    "status": "not_started",
+    "blocked_by": [19],
+    "description": "Write integration tests in tests/integration/: (1) test_durability_flow.py — create agent with tools, run 5 steps, simulate crash (abort mid-run), resume from checkpoint, verify no duplicate tool calls via idempotency. (2) test_session_lifecycle.py — create session, run agent, verify messages persisted, list sessions by user, archive session. (3) test_approval_workflow.py — create agent with human_approval tool, run agent, verify it pauses, resolve approval, resume and verify completion. (4) test_isolation.py — run two agents concurrently with different user_ids, verify no cross-user data leakage in sessions, memory, knowledge. (5) test_memory_persistence.py — add short-term memory, verify retrieval, promote to long-term, verify search. All tests use real SQLite (temp file), mock litellm."
+  },
+  {
+    "id": 21,
+    "title": "E2E test: full SDK scenarios",
+    "assigned_to": "e2e_tester",
+    "status": "not_started",
+    "blocked_by": [18],
+    "description": "Create shared/e2e_scenarios.json and execute end-to-end scenarios against the full Agent SDK stack. Scenarios to cover: (S001) Basic agent run — create agent with a simple @tool, call Agent.run(), verify AgentResult with completed status and correct output. (S002) Durability/resume — run agent, simulate crash mid-step, call Agent.run(resume=True), verify it resumes from checkpoint without duplicate tool calls. (S003) Isolation — run two concurrent agents with different user_ids, verify no cross-user data leakage in sessions, memory, steps. (S004) Governance/approval — create agent with human_approval tool, run agent, verify it pauses, resolve approval via ApprovalManager, resume and verify completion. (S005) Persistence — add short-term memory, retrieve it, promote to long-term, search long-term, verify knowledge store CRUD. (S006) HTTP service — start FastAPI app via create_agent_app(), POST /agent/run, verify response, GET /agent/sessions, GET /agent/health. (S007) Agent-to-agent — create two agent services, have agent A call agent B via AgentClient, verify chain. (S008) Approval API flow — POST /agent/run triggers approval pause, GET /agent/approvals lists pending, POST /agent/approvals/{id} resolves, POST /sessions/{id}/resume completes. For each scenario, record result (PASS/FAIL), failure_summary, and bug_fix_hint in shared/e2e_scenarios.json."
+  },
+  {
+    "id": 22,
+    "title": "Write README and documentation",
+    "assigned_to": "documentation",
+    "status": "not_started",
+    "blocked_by": [18],
+    "description": "Write comprehensive README.md with: (1) Project title and badges. (2) Overview — what the SDK does, the 6 pillars. (3) Installation — pip install, optional deps (server, all, dev). (4) Quickstart — minimal example creating an agent with @tool and running it. (5) Core Concepts — Agent, Session, Tool, RunContext explained with code. (6) Durability — how checkpointing and resume work, example of crash recovery. (7) Isolation — how user boundaries are enforced, example with multi-user. (8) Governance — how policies and approvals work, example with @tool(governance='requires_approval'). (9) Persistence — memory and knowledge APIs with examples. (10) Scale — rate limiting, circuit breakers, queuing. (11) Composability — exposing agents as services, agent-to-agent calls. (12) Configuration — all Settings fields and env vars. (13) Docker — how to run with Docker Desktop. (14) API Reference — link to detailed docs. Write example scripts in examples/: basic_agent.py, durable_agent.py, multi_user.py, approval_workflow.py, agent_service.py."
+  },
+  {
+    "id": 23,
+    "title": "Finalize Docker and CI/CD",
+    "assigned_to": "devops",
+    "status": "not_started",
+    "blocked_by": [21],
+    "description": "Finalize Dockerfile (multi-stage build: builder + runtime, install only production deps in runtime). Finalize docker-compose.yml with volume for SQLite data, environment variables for config. Create .github/workflows/ci.yml: on push/PR to main and feature/* — checkout, setup python 3.11, install dev deps, run ruff check, run mypy, run pytest with coverage, upload coverage artifact. Create .github/workflows/docker.yml: build and tag Docker image on release. Add Makefile or justfile with common commands: install, test, lint, format, docker-build, docker-run."
+  },
+  {
+    "id": 24,
+    "title": "Code review: architecture",
+    "assigned_to": "architecture_reviewer",
+    "status": "not_started",
+    "blocked_by": [18],
+    "description": "Review the complete codebase for architectural concerns: (1) Module boundaries — are they clean? Any circular dependencies? (2) Async consistency — all I/O paths async? Any blocking calls? (3) Error handling — exceptions properly propagated? No swallowed errors? (4) Configuration — all magic values configurable? (5) Extensibility — can users extend without modifying SDK internals? (6) Thread safety — ContextVar usage correct for async? (7) Resource cleanup — all connections/pools properly closed on shutdown? Write findings and recommendations."
+  },
+  {
+    "id": 25,
+    "title": "Code review: backend",
+    "assigned_to": "backend_reviewer",
+    "status": "not_started",
+    "blocked_by": [18],
+    "description": "Review all Python code for quality: (1) Type safety — all public APIs have type hints? (2) Pydantic usage — models validated correctly, proper use of Field, validators? (3) Async patterns — proper use of await, no unnecessary async? (4) Code style — consistent with ruff config, idiomatic Python? (5) Security — no SQL injection (parameterized queries), no credential leaks, proper input validation? (6) Performance — no N+1 queries, efficient serialization, proper connection pooling? Write findings and recommendations."
+  },
+  {
+    "id": 26,
+    "title": "Code review: database",
+    "assigned_to": "database_reviewer",
+    "status": "not_started",
+    "blocked_by": [18],
+    "description": "Review database layer for correctness and performance: (1) Schema design — normalization, data types, constraints, foreign keys. (2) Indexes — are they sufficient for common query patterns? Any missing? (3) Migration strategy — forward-only correct? Version tracking? (4) Query patterns — efficient for expected access patterns? (5) SQLite-specific — WAL mode configured? Journal mode? Busy timeout? (6) Isolation enforcement — ScopedQueryBuilder consistently used? No gaps? (7) Transaction boundaries — correct for atomic operations (checkpoint + step status)? Write findings and recommendations."
+  },
+  {
+    "id": 27,
+    "title": "Apply review fixes and final commit",
+    "assigned_to": "python_coder",
+    "status": "not_started",
+    "blocked_by": [24, 25, 26],
+    "description": "Address all findings from architecture, backend, and database reviews. Fix any issues identified. Ensure all tests still pass after fixes. Update documentation if API changes were made."
+  },
+  {
+    "id": 28,
+    "title": "Final push and PR creation",
+    "assigned_to": "github",
+    "status": "not_started",
+    "blocked_by": [27, 22, 23],
+    "description": "Commit all remaining changes. Push to feature/agent-sdk-core branch. Create pull request: title 'feat: Agent SDK with durability, isolation, governance, persistence, scale, composability', body summarizing all modules implemented, tests, docs, and Docker support."
+  }
+]

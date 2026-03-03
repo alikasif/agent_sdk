@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  sdk:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - sdk-data:/app/data
+    environment:
+      AGENT_SDK_DB_PATH: /app/data/agent_sdk.db
+      AGENT_SDK_LOG_LEVEL: INFO
+
+volumes:
+  sdk-data:
